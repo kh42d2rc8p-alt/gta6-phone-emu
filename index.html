@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>GTA 6 Retro UI Simulator</title>
+    <style>
+        :root {
+            --focus-color: #fcee0a; /* 赛博朋克黄高亮 */
+        }
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0; padding: 0; height: 100vh; background-color: #222; overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        /* 白色机身 */
+        .gta-phone {
+            width: 96vw; max-width: 380px; height: 92vh; max-height: 800px;
+            background: #f7f7f7; border-radius: 35px;
+            border: 2px solid #ddd; box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 -5px 15px rgba(0,0,0,0.1);
+            position: relative; display: flex; flex-direction: column; padding: 15px 10px 25px 10px;
+        }
+
+        /* 屏幕区域 */
+        .screen {
+            width: 100%; height: 100%; background: #000; border-radius: 4px;
+            border: 2px solid #333; position: relative; overflow: hidden; display: flex; flex-direction: column;
+        }
+
+        /* 状态栏 */
+        .status-bar {
+            height: 24px; color: #fff; font-size: 12px; font-weight: bold;
+            display: flex; justify-content: space-between; align-items: center; padding: 0 10px;
+            position: absolute; top: 0; left: 0; right: 0; z-index: 100; text-shadow: 1px 1px 2px #000;
+        }
+
+        /* 壁纸 */
+        .wallpaper {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: url('https://images.unsplash.com/photo-1542282088-fe8426682b8f?q=80&w=600&auto=format&fit=crop') center/cover no-repeat;
+            filter: brightness(0.7) sepia(0.3) hue-rotate(-10deg); /* 调色成迈阿密的日落黄 */
+            z-index: 1;
+        }
+
+        /* 屏幕内容区 */
+        .screen-content { flex-grow: 1; position: relative; z-index: 2; display: flex; flex-direction: column; }
+
+        /* 顶部“提醒事项” Widget */
+        .widget {
+            margin: 40px 15px 20px 15px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);
+            border-radius: 10px; padding: 10px 15px; color: #fff; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .widget-header { font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        .widget-dot { width: 12px; height: 12px; background: #ff2a6d; border-radius: 50%; box-shadow: 0 0 5px #ff2a6d; }
+        .widget-sub { font-size: 11px; color: #aaa; margin-top: 5px; margin-left: 20px; }
+
+        /* 应用图标网格 (3x4) */
+        .app-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px;
+            padding: 10px 20px; flex-grow: 1;
+        }
+
+        .app-icon {
+            aspect-ratio: 1; border-radius: 50%;
+            display: flex; justify-content: center; align-items: center; font-size: 24px;
+            border: 2px solid transparent; transition: all 0.2s;
+            box-shadow: inset 0 -3px 8px rgba(0,0,0,0.2), 0 4px 8px rgba(0,0,0,0.4);
+            position: relative;
+        }
+        /* 模拟拟物玻璃高光 */
+        .app-icon::after {
+            content: ''; position: absolute; top: 10%; left: 10%; width: 80%; height: 30%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.6), transparent); border-radius: 50%;
+        }
+
+        /* 焦点状态 */
+        .app-icon.focused { 
+            border-color: var(--focus-color); transform: scale(1.15); 
+            box-shadow: 0 0 20px var(--focus-color), inset 0 -3px 8px rgba(0,0,0,0.2); z-index: 10;
+        }
+
+        /* 底部联系人悬浮框 */
+        .bottom-dock {
+            margin: 0 auto 15px auto; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px);
+            padding: 8px 30px; border-radius: 20px; color: #fff; font-size: 13px; font-weight: bold;
+            border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s;
+        }
+        .bottom-dock.focused { border-color: var(--focus-color); background: rgba(0,0,0,0.9); box-shadow: 0 0 15px var(--focus-color); }
+
+        /* 侧边实体按键 */
+        .side-buttons {
+            position: absolute; right: -15px; top: 20%; height: 250px; width: 15px;
+            display: flex; flex-direction: column; gap: 15px;
+        }
+        .side-btn {
+            width: 100%; background: linear-gradient(90deg, #bbb, #eee); border-radius: 0 4px 4px 0;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; 
+            color: #333; font-size: 10px; cursor: pointer; writing-mode: vertical-rl; font-weight: bold;
+        }
+        .side-btn:active, .side-btn.pressed { transform: translateX(-3px); background: #999; }
+        .side-btn.vol-up { height: 90px; border-radius: 4px 4px 0 0; }
+        .side-btn.vol-down { height: 90px; border-radius: 0 0 4px 4px; }
+        .side-btn.power { height: 60px; margin-top: 20px; }
+
+        /* 提示 UI */
+        .toast {
+            position: absolute; top: 40%; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: #fff; padding: 10px 20px; border-radius: 20px;
+            font-size: 14px; font-weight: bold; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999;
+            border: 1px solid var(--focus-color);
+        }
+        .toast.show { opacity: 1; }
+
+        /* 底部椭圆实体 Home 键 (装饰) */
+        .physical-home {
+            position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+            width: 40px; height: 12px; border-radius: 10px; background: #333; box-shadow: inset 0 2px 4px #000;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="gta-phone">
+        <!-- 侧边实体按键 -->
+        <div class="side-buttons">
+            <div class="side-btn vol-up" id="btn-up">上</div>
+            <div class="side-btn vol-down" id="btn-down">下</div>
+            <div class="side-btn power" id="btn-confirm">确认</div>
+        </div>
+
+        <div class="screen">
+            <div class="status-bar">
+                <span>1:47 pm</span>
+                <span>📶 🔋</span>
+            </div>
+
+            <div class="wallpaper"></div>
+
+            <div class="screen-content">
+                <!-- 顶部 Widget -->
+                <div class="widget">
+                    <div class="widget-header"><div class="widget-dot"></div> 提醒事项</div>
+                    <div class="widget-sub">2条通知</div>
+                </div>
+
+                <!-- 应用网格 -->
+                <div class="app-grid" id="app-grid">
+                    <!-- 第一行 -->
+                    <div class="app-icon" style="background: #8ecae6;" data-name="天气">☀️</div>
+                    <div class="app-icon" style="background: #2a9d8f;" data-name="电话">📞</div>
+                    <div class="app-icon" style="background: #222;" data-name="相机">📷</div>
+                    <div class="app-icon" style="background: #3a0ca3;" data-name="钱包">💳</div>
+                    
+                    <!-- 第二行 -->
+                    <div class="app-icon" style="background: #f8edeb;" data-name="相册">🖼️</div>
+                    <div class="app-icon" style="background: #f4a261;" data-name="便签">📝</div>
+                    <div class="app-icon" style="background: #e63946;" data-name="邮件">✉️</div>
+                    <div class="app-icon" style="background: #a2d2ff;" data-name="云端">☁️</div>
+
+                    <!-- 第三行 -->
+                    <div class="app-icon" style="background: #f72585;" data-name="指南针">🧭</div>
+                    <div class="app-icon" style="background: #e9ecef;" data-name="设置">⚙️</div>
+                </div>
+
+                <!-- 底部悬浮联系人 -->
+                <div class="bottom-dock" id="dock-contacts" data-name="联系人">联系人</div>
+            </div>
+
+            <div class="toast" id="toast">提示</div>
+        </div>
+        
+        <!-- 底部实体 Home 键 -->
+        <div class="physical-home"></div>
+    </div>
+
+    <script>
+        // 状态管理
+        const gridItems = Array.from(document.querySelectorAll('.app-icon'));
+        const dockItem = document.getElementById('dock-contacts');
+        const allFocusable = [...gridItems, dockItem];
+        
+        let focusIndex = 0; // 当前选中的元素索引
+        let cols = 4; // 网格有4列
+
+        function vibrate() { if (navigator.vibrate) navigator.vibrate(30); }
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 1500);
+        }
+
+        // 更新焦点视觉
+        function updateVisualFocus() {
+            allFocusable.forEach(el => el.classList.remove('focused'));
+            allFocusable[focusIndex].classList.add('focused');
+        }
+
+        // 初始化焦点
+        updateVisualFocus();
+
+        // 上下滑动逻辑
+        function moveFocus(direction) {
+            vibrate();
+            
+            // 如果焦点在底部Dock上
+            if (focusIndex === allFocusable.length - 1) {
+                if (direction === -1) focusIndex = 8; // 上滑回到倒数第一排的第一个图标(指南针)
+                else focusIndex = 0; // 下滑循环回第一个图标
+            } 
+            // 如果焦点在图标网格内
+            else {
+                let row = Math.floor(focusIndex / cols);
+                let col = focusIndex % cols;
+
+                if (direction === 1) { // 向下
+                    // 检查下一行是否存在这个列
+                    let nextRowIndex = (row + 1) * cols + col;
+                    if (nextRowIndex < gridItems.length) {
+                        focusIndex = nextRowIndex;
+                    } else {
+                        // 如果下面没图标了，就跳到 Dock
+                        focusIndex = allFocusable.length - 1;
+                    }
+                } else if (direction === -1) { // 向上
+                    if (row > 0) {
+                        focusIndex = (row - 1) * cols + col;
+                    } else {
+                        // 从第一排往上推，就从头开始
+                        focusIndex = gridItems.length - 1; 
+                    }
+                }
+            }
+            updateVisualFocus();
+        }
+
+        // 确认键逻辑
+        function confirmAction() {
+            vibrate();
+            const targetElement = allFocusable[focusIndex];
+            const appName = targetElement.getAttribute('data-name');
+            
+            if (targetElement.classList.contains('app-icon')) {
+                targetElement.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    targetElement.style.transform = 'scale(1.15)';
+                    showToast('正在打开: ' + appName);
+                }, 100);
+            } else {
+                showToast('打开通讯录');
+            }
+        }
+
+        // 侧键绑定 (PointerDown 用于适配手机)
+        document.getElementById('btn-up').addEventListener('pointerdown', (e) => {
+            e.preventDefault(); e.target.classList.add('pressed');
+            moveFocus(-1);
+        });
+        document.getElementById('btn-up').addEventListener('pointerup', (e) => e.target.classList.remove('pressed'));
+        document.getElementById('btn-up').addEventListener('pointerleave', (e) => e.target.classList.remove('pressed'));
+
+        document.getElementById('btn-down').addEventListener('pointerdown', (e) => {
+            e.preventDefault(); e.target.classList.add('pressed');
+            moveFocus(1);
+        });
+        document.getElementById('btn-down').addEventListener('pointerup', (e) => e.target.classList.remove('pressed'));
+        document.getElementById('btn-down').addEventListener('pointerleave', (e) => e.target.classList.remove('pressed'));
+
+        document.getElementById('btn-confirm').addEventListener('pointerdown', (e) => {
+            e.preventDefault(); e.target.classList.add('pressed');
+            confirmAction();
+        });
+        document.getElementById('btn-confirm').addEventListener('pointerup', (e) => e.target.classList.remove('pressed'));
+        document.getElementById('btn-confirm').addEventListener('pointerleave', (e) => e.target.classList.remove('pressed'));
+
+    </script>
+</body>
+</html>
