@@ -1,507 +1,242 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>GTA 6 Retro Phone - Interactive Full Apps</title>
-    <style>
-        :root { --focus-color: #fcee0a; }
-        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
-        body {
-            margin: 0; padding: 0; height: 100vh; background-color: #111; overflow: hidden;
-            display: flex; justify-content: center; align-items: center; font-family: 'Helvetica Neue', Arial, sans-serif;
-        }
-        /* 白色机身 */
-        .gta-phone {
-            width: 96vw; max-width: 380px; height: 92vh; max-height: 800px;
-            background: #f7f7f7; border-radius: 35px; border: 2px solid #ddd;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 -5px 15px rgba(0,0,0,0.1);
-            position: relative; display: flex; flex-direction: column; padding: 15px 10px 25px 10px;
-        }
-        /* 屏幕区域 */
-        .screen {
-            width: 100%; height: 100%; background: #000; border-radius: 4px;
-            border: 2px solid #333; position: relative; overflow: hidden; display: flex; flex-direction: column;
-        }
-        /* 状态栏 */
-        .status-bar {
-            height: 24px; color: #fff; font-size: 12px; font-weight: bold;
-            display: flex; justify-content: space-between; align-items: center; padding: 0 10px;
-            position: absolute; top: 0; left: 0; right: 0; z-index: 100; text-shadow: 1px 1px 2px #000;
-        }
-        /* === 视图1：桌面 === */
-        .view-home {
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 2;
-            display: flex; flex-direction: column; padding: 30px 10px 0 10px;
-            background: url('https://images.unsplash.com/photo-1505118380757-91f5f5632de0?q=80&w=800&auto=format&fit=crop') center/cover no-repeat;
-        }
-        .view-home::before {
-            content: ''; position: absolute; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.4); z-index: -1;
-        }
-        .view-home.hidden { display: none; }
-        /* Widgets */
-        .widgets { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; margin-top: 10px; }
-        .widget-main, .widget-weather {
-            background: rgba(0, 0, 0, 0.65); backdrop-filter: blur(4px);
-            border-radius: 10px; padding: 10px 15px; color: #fff; border: 1px solid rgba(255,255,255,0.1);
-        }
-        .widget-header { font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-        .widget-dot { width: 10px; height: 10px; background: #ff2a6d; border-radius: 50%; }
-        .widget-sub { font-size: 11px; color: #aaa; margin-top: 4px; margin-left: 18px; }
-        .widget-weather { display: flex; justify-content: space-between; align-items: center; width: 60%; }
-        .widget-weather .temp { font-size: 18px; font-weight: bold; margin-right: 5px;}
-        /* 图标网格 */
-        .app-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px 10px; flex-grow: 1; align-content: start; }
-        .app-icon {
-            width: 100%; aspect-ratio: 1; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px;
-            border: 2px solid transparent; transition: all 0.15s; box-shadow: inset 0 -3px 8px rgba(0,0,0,0.3), 0 3px 6px rgba(0,0,0,0.5);
-            position: relative;
-        }
-        .app-icon::after {
-            content: ''; position: absolute; top: 5%; left: 5%; width: 90%; height: 40%;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.7), transparent); border-radius: 50%;
-        }
-        .app-icon.focused { border-color: var(--focus-color); transform: scale(1.1); box-shadow: 0 0 15px var(--focus-color); z-index: 10; }
-        /* 底部胶囊 */
-        .bottom-dock {
-            margin: 10px auto 15px auto; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px);
-            padding: 8px 30px; border-radius: 20px; color: #fff; font-size: 13px; font-weight: bold;
-            border: 1px solid rgba(255,255,255,0.2); min-width: 120px; text-align: center;
-        }
-        /* === 通用APP页面模板 === */
-        .app-view {
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #111; z-index: 5;
-            display: flex; flex-direction: column; padding-top: 24px;
-        }
-        .app-view.hidden { display: none; }
-        .app-header { background: #222; color: #fff; padding: 10px; font-size:14px; font-weight:bold; border-bottom:1px solid #333; text-align:center; }
-        .app-content { flex-grow:1; overflow-y:auto; padding:15px; color:#ccc; font-size:13px; line-height:1.5; }
-        .item-row { background:#1a1a1a; padding:10px; border-radius:6px; margin-bottom:10px; border:1px solid #333; }
-        /* 社交App帖子 */
-        .post { background: #1a1a1a; border-radius: 8px; overflow: hidden; border: 1px solid #333; margin-bottom: 20px; }
-        .post-img { width: 100%; height: 180px; background: #333; object-fit: cover; }
-        .post-body { padding: 10px; }
-        .post-user { color: #fff; font-weight: bold; font-size: 14px; margin-bottom: 5px; }
-        .post-text { color: #ccc; font-size: 13px; margin-bottom: 10px; line-height: 1.4; }
-        .action-row { display: flex; gap: 10px; }
-        .action-btn {
-            background: #2a2a2a; color: #aaa; border: 1px solid #444; padding: 6px 15px; border-radius: 15px;
-            font-size: 12px; font-weight: bold; transition: all 0.2s;
-        }
-        .action-btn.focused { border-color: var(--focus-color); color: var(--focus-color); background: #111; box-shadow: 0 0 10px rgba(252, 238, 10, 0.3); }
-        .comments-list { background: #111; padding: 10px; font-size: 12px; color: #888; border-top: 1px solid #333; }
-        .comment-item { margin-bottom: 5px; }
-        .comment-item span { color: #0f0; font-weight: bold; }
-        /* === 视图3：复古侧键键盘 === */
-        .view-keyboard {
-            position: absolute; bottom: 0; left: 0; right: 0; background: #222; z-index: 10;
-            display: flex; flex-direction: column; padding: 5px; border-top: 2px solid #444;
-        }
-        .view-keyboard.hidden { display: none; }
-        .input-display {
-            background: #000; color: #0f0; padding: 10px; font-family: monospace; font-size: 16px;
-            border: 1px solid #333; margin-bottom: 5px; min-height: 40px; word-break: break-all;
-        }
-        .input-display::after { content: '_'; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
-        .keyboard-grid {
-            display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
-        }
-        .k-key {
-            background: #333; color: #fff; text-align: center; padding: 8px 0; border-radius: 4px;
-            font-size: 14px; font-weight: bold; border: 1px solid #444;
-        }
-        .k-key.focused { border-color: var(--focus-color); background: #111; box-shadow: inset 0 0 8px var(--focus-color); }
-        .k-key.span-2 { grid-column: span 2; }
-        .k-key.span-3 { grid-column: span 3; }
-        .k-key.span-6 { grid-column: span 6; background: #444; color: var(--focus-color); }
-        /* 侧边按键 */
-        .side-buttons { position: absolute; right: -15px; top: 25%; height: 250px; width: 15px; display: flex; flex-direction: column; gap: 15px; z-index: 999;}
-        .side-btn { width: 100%; background: linear-gradient(90deg, #bbb, #eee); border-radius: 0 4px 4px 0; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; color: #333; font-size: 10px; cursor: pointer; writing-mode: vertical-rl; font-weight: bold; }
-        .side-btn:active, .side-btn.pressed { transform: translateX(-3px); background: #999; }
-        .side-btn.vol-up { height: 80px; border-radius: 4px 4px 0 0; }
-        .side-btn.vol-down { height: 80px; border-radius: 0 0 4px 4px; }
-        .side-btn.power { height: 60px; margin-top: 10px; }
-        .physical-home { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 40px; height: 12px; border-radius: 10px; background: #333; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GTA6 Jason 手机模拟器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif}
+body{background:#111;display:flex;justify-content:center;align-items:center;height:100vh;color:#fff;gap:16px}
+.phone{width:340px;height:660px;background:#000;border-radius:36px;border:8px solid #222;overflow:hidden;position:relative}
+.screen{width:100%;height:100%;background:linear-gradient(135deg,#252a40,#703858);position:relative}
+.statusbar{height:32px;display:flex;justify-content:space-between;align-items:center;padding:0 14px;font-size:13px}
+.home{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:40px;height:40px;border:2px solid #aaa;border-radius:50%}
+.page{display:none;width:100%;height:calc(100% - 32px);padding:12px;overflow-y:auto}
+.page.active{display:block}
+.app-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding-top:8px}
+.app-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+.app-icon{width:54px;height:54px;border-radius:12px;background:#333;display:flex;align-items:center;justify-content:center;font-size:24px}
+.app-name{font-size:11px}
+/* 短信页 */
+.chat-list{display:flex;flex-direction:column;gap:10px}
+.chat-item{background:rgba(255,255,255,0.12);padding:10px;border-radius:10px;cursor:pointer}
+.chat-top{display:flex;justify-content:space-between}
+.chat-name{font-weight:bold}
+.chat-preview{font-size:12px;opacity:0.8;margin-top:3px}
+.msg-box{display:flex;flex-direction:column;gap:10px;margin-bottom:110px}
+.msg-self{align-self:flex-end;background:#4884ff;padding:8px 10px;border-radius:10px;max-width:75%}
+.msg-other{align-self:flex-start;background:rgba(255,255,255,0.18);padding:8px 10px;border-radius:10px;max-width:75%}
+.input-area{position:absolute;bottom:0;left:0;width:100%;padding:8px;background:#000c}
+/* T9九宫格键盘 */
+.t9-keyboard{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px}
+.t9-key{background:#333;text-align:center;padding:10px;border-radius:6px;font-size:16px;cursor:pointer}
+.t9-key.func{background:#555}
+/* 侧边触控板 */
+.trackpad{width:110px;height:320px;background:#222;border-radius:10px;position:relative}
+.trackpad-inner{width:100%;height:100%;cursor:grab}
+.trackpad:active .trackpad-inner{cursor:grabbing}
+.trackpad-label{text-align:center;margin-top:8px;font-size:12px;opacity:0.7}
+.back-btn{position:absolute;top:40px;right:12px;padding:6px 10px;background:#444;border-radius:6px;font-size:12px;cursor:pointer}
+.title-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+</style>
 </head>
 <body>
-    <div class="gta-phone">
-        <!-- 物理按键 -->
-        <div class="side-buttons">
-            <div class="side-btn vol-up" id="btn-left">左/上</div>
-            <div class="side-btn vol-down" id="btn-right">右/下</div>
-            <div class="side-btn power" id="btn-confirm">确认</div>
-        </div>
-        <div class="screen">
-            <div class="status-bar">
-                <span>1:47 pm</span>
-                <span>📶 🔋</span>
-            </div>
-            <!-- 视图1：桌面 -->
-            <div class="view-home" id="view-home">
-                <div class="widgets">
-                    <div class="widget-main">
-                        <div class="widget-header"><div class="widget-dot"></div> 提醒事项</div>
-                        <div class="widget-sub">2条通知</div>
-                    </div>
-                    <div class="widget-weather">
-                        <div><span class="temp">28°</span><span style="font-size:11px;">Vice City</span></div>
-                        <div style="font-size: 16px;">⛅</div>
-                    </div>
-                </div>
-                <div class="app-grid" id="app-grid">
-                    <div class="app-icon" style="background:#8ecae6;" data-name="天气" data-app="weather">☀️</div>
-                    <div class="app-icon" style="background:#2a9d8f;" data-name="电话" data-app="phone">📞</div>
-                    <div class="app-icon" style="background:#333;" data-name="相机" data-app="camera">📷</div>
-                    <div class="app-icon" style="background:#3a0ca3;" data-name="地图" data-app="map">🗺️</div>
-                    <div class="app-icon" style="background:#f8edeb;" data-name="相册/社交" data-app="social">🖼️</div>
-                    <div class="app-icon" style="background:#f4a261;" data-name="便签" data-app="note">📝</div>
-                    <div class="app-icon" style="background:#e63946;" data-name="邮件" data-app="mail">✉️</div>
-                    <div class="app-icon" style="background:#a2d2ff;" data-name="云端" data-app="cloud">☁️</div>
-                    <div class="app-icon" style="background:#f72585;" data-name="指南针" data-app="compass">🧭</div>
-                    <div class="app-icon" style="background:#e9ecef;" data-name="设置" data-app="settings">⚙️</div>
-                </div>
-                <div class="bottom-dock" id="text-display">天气</div>
-            </div>
+<div class="phone">
+  <div class="screen">
+    <div class="statusbar">
+      <span>13:28</span>
+      <span>📶 🔋</span>
+    </div>
+    <!-- 主桌面 -->
+    <div class="page active" id="home">
+      <div class="app-grid">
+        <div class="app-item" onclick="openPage('msg')"><div class="app-icon">💬</div><div class="app-name">消息</div></div>
+        <div class="app-item" onclick="openPage('call')"><div class="app-icon">📞</div><div class="app-name">电话</div></div>
+        <div class="app-item" onclick="openPage('camera')"><div class="app-icon">📷</div><div class="app-name">相机</div></div>
+        <div class="app-item" onclick="openPage('browser')"><div class="app-icon">🌐</div><div class="app-name">浏览器</div></div>
 
-            <!-- App:天气 -->
-            <div class="app-view hidden" id="view-weather">
-                <div class="app-header">天气 · Vice City</div>
-                <div class="app-content">
-                    <div class="item-row">🌤️ 当前：28℃，多云</div>
-                    <div class="item-row">📅 今日：26~31℃，午后阵雨</div>
-                    <div class="item-row">📆 明日：25~30℃，晴朗</div>
-                    <div class="item-row">⚠️ 提示：海滨地区紫外线较强</div>
-                    <div style="margin-top:20px;color:#888;">长按确认键返回桌面</div>
-                </div>
-            </div>
+        <div class="app-item" onclick="openPage('snap')"><div class="app-icon">📸</div><div class="app-name">Snapmatic</div></div>
+        <div class="app-item" onclick="openPage('gallery')"><div class="app-icon">🖼️</div><div class="app-name">相册</div></div>
+        <div class="app-item" onclick="openPage('mail')"><div class="app-icon">📧</div><div class="app-name">邮件</div></div>
+        <div class="app-item" onclick="openPage('weather')"><div class="app-icon">🌤️</div><div class="app-name">天气</div></div>
 
-            <!-- App:电话 -->
-            <div class="app-view hidden" id="view-phone">
-                <div class="app-header">电话</div>
-                <div class="app-content">
-                    <div class="item-row">📞 最近通话</div>
-                    <div class="item-row">Lucia — 未接来电</div>
-                    <div class="item-row">Jason — 已通话 02:14</div>
-                    <div class="item-row">联系 · 黑市中间人</div>
-                    <div style="margin-top:20px;color:#888;">长按确认键返回桌面</div>
-                </div>
-            </div>
-
-            <!-- App:相机 -->
-            <div class="app-view hidden" id="view-camera">
-                <div class="app-header">相机</div>
-                <div class="app-content">
-                    <div class="item-row">取景器模拟预览（GTA6拍照模式）</div>
-                    <div class="item-row">模式：照片 / 滤镜 / 景深调节</div>
-                    <div class="item-row">⚠️ 主角为逃犯，照片会留下数字痕迹</div>
-                    <div style="margin-top:20px;color:#888;">长按确认键返回桌面</div>
-                </div>
-            </div>
-
-            <!-- App:地图 -->
-            <div class="app-view hidden" id="view-map">
-                <div class="app-header">地图 — Leonida州</div>
-                <div class="app-content">
-                    <div class="item-row">📍 当前位置：Vice City 海滩</div>
-                    <div class="item-row">标记点：便利店、安全屋、租车点</div>
-                    <div class="item-row">🚕 RydeMe 打车快速跳转入口</div>
-                    <div style="margin-top:20px;color:#888;">长按确认键返回桌面</div>
-                </div>
-            </div>
-
-            <!-- App:Snapmatic社交 -->
-            <div class="app-view hidden" id="view-social">
-                <div class="app-header">Snapmatic</div>
-                <div class="app-content">
-                    <div class="post">
-                        <img class="post-img" src="https://images.unsplash.com/photo-1542282088-fe8426682b8f?q=80&w=600&auto=format&fit=crop" alt="Trunk">
-                        <div class="post-body">
-                            <div class="post-user">@Swampinator</div>
-                            <div class="post-text">看看是哪个倒霉蛋后备箱里塞了一大波能让人……</div>
-                            <div class="action-row" id="social-actions">
-                                <div class="action-btn" data-action="like">❤️ 155</div>
-                                <div class="action-btn" data-action="comment">💬 写评论</div>
-                            </div>
-                        </div>
-                        <div class="comments-list" id="comments-list">
-                            <div class="comment-item"><span>@LucidCity:</span> 这哥们彻底疯了。</div>
-                        </div>
-                    </div>
-                    <div style="margin-top:10px;color:#888;">长按确认键返回桌面</div>
-                </div>
-            </div>
-
-            <!-- App:便签 -->
-            <div class="app-view hidden" id="view-note">
-                <div class="app-header">便签</div>
-                <div class="app-content">
-                    <div class="item-row">备忘录1：保险箱密码 24‑71</div>
-                    <div class="item-row">备忘录2：目标车辆信息</div>
-                    <div class="item-row">备忘录3：和Lucia的碰头地点</div>
-                    <div style="margin-top:20px;color:#888;">长按确认键返回桌面</div>
-                </div>
-            </div>
-
-            <!-- App:邮件 -->
-            <div class="app-view hidden" id="view-mail">
-                <div class="app-header">邮件</div>
-                <div class="app-content">
-                    <div class="item-row">【黑市】新的货物清单（未读）</div>
-                    <div class="item-row">【银行】BuckMe账户变动通知</div>
-                    <div class="item-row">系统：安全警告，避免留下电子足迹</div>
-                    <div style="margin-top:20px;color:#888;">长按确认键返回桌面</div>
-                </div>
-            </div>
-
-            <!-- App:云端 -->
-            <div class="app-view hidden" id="view-cloud">
-                <div class="app-header">云端存储</div>
-                <div class="app-content">
-                    <div class="item-row">已占用：62% 存储空间</div>
-                    <div class="item-row">⚠️ 提示：云端会留存你的数据记录</div>
-                    <div class="item-row">备份照片、备忘录</div>
-                    <div style="margin-top:20px;color:#888;">长按确认键返回桌面</div>
-                </div>
-            </div>
-
-            <!-- App:指南针 -->
-            <div class="app-view hidden" id="view-compass">
-                <div class="app-header">指南针</div>
-                <div class="app-content">
-                    <div class="item-row">🧭 方向：北‑东北</div>
-                    <div class="item-row">海拔：4米，靠近海岸线</div>
-                    <div class="item-row">GPS坐标模拟：Vice City海滩区域</div>
-                    <div style="margin-top:20px;color:#888;">长按确认键返回桌面</div>
-                </div>
-            </div>
-
-            <!-- App:设置 -->
-            <div class="app-view hidden" id="view-settings">
-                <div class="app-header">手机设置</div>
-                <div class="app-content">
-                    <div class="item-row">🔔 通知管理</div>
-                    <div class="item-row">🔒 隐私（关闭部分追踪）</div>
-                    <div class="item-row">🔊 音量与震动</div>
-                    <div class="item-row">🌙 深色模式（已开启）</div>
-                    <div class="item-row">ℹ️ 关于本机 — GTA6 Retro‑Phone</div>
-                    <div style="margin-top:20px;color:#888;">长按确认键返回桌面</div>
-                </div>
-            </div>
-
-            <!-- 视图3：侧键键盘（仅社交评论使用） -->
-            <div class="view-keyboard hidden" id="view-keyboard">
-                <div class="input-display" id="input-display"></div>
-                <div class="keyboard-grid" id="keyboard-grid"></div>
-            </div>
-        </div>
-        <div class="physical-home"></div>
+        <div class="app-item" onclick="openPage('map')"><div class="app-icon">🗺️</div><div class="app-name">地图</div></div>
+        <div class="app-item" onclick="openPage('note')"><div class="app-icon">📝</div><div class="app-name">便签</div></div>
+        <div class="app-item" onclick="openPage('bank')"><div class="app-icon">🏦</div><div class="app-name">BuckMe</div></div>
+        <div class="app-item" onclick="openPage('setting')"><div class="app-icon">⚙️</div><div class="app-name">设置</div></div>
+      </div>
     </div>
 
-    <script>
-        let currentView = 'home';
-        let focusGroup = [];
-        let focusIndex = 0;
-        const homeIcons = document.querySelectorAll('#app-grid .app-icon');
-        const socialBtns = document.querySelectorAll('#social-actions .action-btn');
-        const kGrid = document.getElementById('keyboard-grid');
-        let currentText = "";
-        let isLiked = false;
+    <!-- 消息页面 -->
+    <div class="page" id="msg">
+      <div class="title-bar">
+        <span style="font-weight:bold">消息</span>
+        <span onclick="backHome()" style="cursor:pointer">返回</span>
+      </div>
+      <div class="chat-list">
+        <div class="chat-item" onclick="openChat('lucia')">
+          <div class="chat-top"><span class="chat-name">Lucia（女主）</span><span>刚刚</span></div>
+          <div class="chat-preview">杰森，想好下一步怎么做了吗？</div>
+        </div>
+        <div class="chat-item" onclick="openChat('broker')">
+          <div class="chat-top"><span class="chat-name">黑市中间人</span><span>昨天</span></div>
+          <div class="chat-preview">货已经安排好了，地点发给你</div>
+        </div>
+        <div class="chat-item" onclick="openChat('ryde')">
+          <div class="chat-top"><span class="chat-name">RydeMe</span><span>2天前</span></div>
+          <div class="chat-preview">你的行程已完成</div>
+        </div>
+      </div>
+    </div>
 
-        function vibrate() { if (navigator.vibrate) navigator.vibrate(30); }
-        function updateFocusUI() {
-            document.querySelectorAll('.focused').forEach(el => el.classList.remove('focused'));
-            if (focusGroup.length > 0 && focusGroup[focusIndex]) focusGroup[focusIndex].classList.add('focused');
-        }
-        function setFocusGroup(elements, index = 0) {
-            focusGroup = Array.from(elements);
-            focusIndex = index;
-            updateFocusUI();
-        }
+    <!-- 聊天页 -->
+    <div class="page" id="chat">
+      <div class="title-bar">
+        <span id="chat-title">Lucia</span>
+        <span onclick="openPage('msg')" style="cursor:pointer">返回</span>
+      </div>
+      <div class="msg-box" id="msgContainer"></div>
+      <div class="input-area">
+        <div id="t9" class="t9-keyboard">
+          <div class="t9-key" data-chars="1">1</div>
+          <div class="t9-key" data-chars="abc2">2</div>
+          <div class="t9-key" data-chars="def3">3</div>
+          <div class="t9-key" data-chars="ghi4">4</div>
+          <div class="t9-key" data-chars="jkl5">5</div>
+          <div class="t9-key" data-chars="mno6">6</div>
+          <div class="t9-key" data-chars="pqrs7">7</div>
+          <div class="t9-key" data-chars="tuv8">8</div>
+          <div class="t9-key" data-chars="wxyz9">9</div>
+          <div class="t9-key func" data-chars=" ">空格</div>
+          <div class="t9-key func" data-chars="del">⌫</div>
+          <div class="t9-key func" data-chars="send">发送</div>
+        </div>
+      </div>
+    </div>
 
-        // 隐藏全部App页面
-        function hideAllApps(){
-            document.querySelectorAll('.app-view').forEach(v=>v.classList.add('hidden'));
-            document.getElementById('view-keyboard').classList.add('hidden');
-        }
+    <!-- 其他App占位页 -->
+    <div class="page" id="call"><div class="title-bar"><span>电话</span><span onclick="backHome()">返回</span></div><p style="margin-top:20px">拨号界面（待扩展）</p></div>
+    <div class="page" id="camera"><div class="title-bar"><span>相机</span><span onclick="backHome()">返回</span></div><p style="margin-top:20px">Snapmatic相机</p></div>
+    <div class="page" id="browser"><div class="title-bar"><span>浏览器</span><span onclick="backHome()">返回</span></div><p style="margin-top:20px">Vice City网页</p></div>
+    <div class="page" id="snap"><div class="title-bar"><span>Snapmatic</span><span onclick="backHome()">返回</span></div><p style="margin-top:20px">照片社交</p></div>
+    <div class="page" id="gallery"><div class="title-bar"><span>相册</span><span onclick="backHome()">返回</span></div><p style="margin-top:20px">手机相册</p></div>
+    <div class="page" id="mail"><div class="title-bar"><span>邮件</span><span onclick="backHome()">返回</span></div><p style="margin-top:20px">收件箱</p></div>
+    <div class="page" id="weather"><div class="title-bar"><span>天气</span><span onclick="backHome()">返回</span></div><p style="margin-top:20px">Vice City 晴，炎热</p></div>
+    <div class="page" id="map"><div class="title-bar"><span>地图</span><span onclick="backHome()">返回</span></div><p style="margin-top:20px">洛圣都、VICE城地图</p></div>
+    <div class="page" id="note"><div class="title-bar"><span>便签</span><span onclick="backHome()">返回</span></div><p style="margin-top:20px">备忘录</p></div>
+    <div class="page" id="bank"><div class="title-bar"><span>BuckMe银行</span><span onclick="backHome()">返回</span></div><p style="margin-top:20px">余额：$ 2450</p></div>
+    <div class="page" id="setting"><div class="title-bar"><span>设置</span><span onclick="backHome()">返回</span></div><p style="margin-top:20px">杰森手机设置</p></div>
 
-        // 返回桌面
-        function goHome() {
-            hideAllApps();
-            document.getElementById('view-home').classList.remove('hidden');
-            currentView = 'home';
-            setFocusGroup(homeIcons, 0);
-            document.getElementById('text-display').innerText = focusGroup[focusIndex].getAttribute('data-name');
-        }
+    <div class="home" onclick="backHome()"></div>
+  </div>
+</div>
 
-        // 打开指定App
-        function openApp(appName){
-            hideAllApps();
-            document.getElementById('view-home').classList.add('hidden');
-            document.getElementById(`view-${appName}`).classList.remove('hidden');
-            currentView = appName;
-            // 如果是社交，焦点给到点赞/评论按钮；其余App无交互焦点
-            if(appName==='social'){
-                setFocusGroup(socialBtns,0);
-            }else{
-                focusGroup=[]; focusIndex=0; updateFocusUI();
-            }
-        }
+<!-- 侧边触控板 -->
+<div>
+  <div class="trackpad">
+    <div class="trackpad-inner" id="tp"></div>
+  </div>
+  <div class="trackpad-label">触控板 · 拖动滑动 / 点击确认</div>
+</div>
 
-        // 桌面操作逻辑
-        function homeAction(direction, isConfirm) {
-            if (isConfirm) {
-                vibrate();
-                const target = focusGroup[focusIndex];
-                const appId = target.getAttribute('data-app');
-                openApp(appId);
-            } else {
-                vibrate();
-                focusIndex = (focusIndex + direction + focusGroup.length) % focusGroup.length;
-                updateFocusUI();
-                document.getElementById('text-display').innerText = focusGroup[focusIndex].getAttribute('data-name');
-            }
-        }
+<script>
+let currentChat = "";
+let chatInput = "";
+let charIndex = 0;
+const replyPool = {
+  lucia: [
+    "别太冒失，我们得小心警察",
+    "这个计划风险很大，你确定？",
+    "找到目标之后通知我",
+    "钱拿到手我们就离开这里",
+    "Vice City到处都是眼线"
+  ],
+  broker: [
+    "价格不变，晚上老地方交易",
+    "条子最近查得严，注意隐蔽"
+  ],
+  ryde: [
+    "感谢使用RydeMe，期待再次搭乘"
+  ]
+}
 
-        // 社交页面操作
-        function socialAction(direction, isConfirm) {
-            if (isConfirm) {
-                vibrate();
-                const action = focusGroup[focusIndex].getAttribute('data-action');
-                if (action === 'like') {
-                    if (!isLiked) {
-                        focusGroup[focusIndex].innerText = '❤️ 156';
-                        focusGroup[focusIndex].style.color = '#ff2a6d';
-                        isLiked = true;
-                    } else {
-                        focusGroup[focusIndex].innerText = '❤️ 155';
-                        focusGroup[focusIndex].style.color = '';
-                        isLiked = false;
-                    }
-                } else if (action === 'comment') {
-                    document.getElementById('view-keyboard').classList.remove('hidden');
-                    currentView = 'keyboard';
-                    currentText = "";
-                    document.getElementById('input-display').innerText = "";
-                    setFocusGroup(document.querySelectorAll('.k-key'), 0);
-                }
-            } else {
-                vibrate();
-                focusIndex = (focusIndex + direction + focusGroup.length) % focusGroup.length;
-                updateFocusUI();
-            }
-        }
+// 页面切换
+function openPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function backHome(){ openPage('home'); }
 
-        // 键盘评论
-        function keyboardAction(direction, isConfirm) {
-            if (isConfirm) {
-                vibrate();
-                const target = focusGroup[focusIndex];
-                const key = target.getAttribute('data-key');
-                if (key === 'ENTER') {
-                    if (currentText.trim() !== "") {
-                        const cList = document.getElementById('comments-list');
-                        const newC = document.createElement('div');
-                        newC.className = 'comment-item';
-                        newC.innerHTML = `<span>@Player:</span> ${currentText}`;
-                        cList.appendChild(newC);
-                        document.getElementById('view-keyboard').classList.add('hidden');
-                        currentView = 'social';
-                        setFocusGroup(socialBtns, 1);
-                    }
-                } else if (key === 'DEL') {
-                    currentText = currentText.slice(0, -1);
-                    document.getElementById('input-display').innerText = currentText;
-                } else if (key === 'SPACE') {
-                    currentText += " ";
-                    document.getElementById('input-display').innerText = currentText;
-                } else {
-                    currentText += key;
-                    document.getElementById('input-display').innerText = currentText;
-                }
-            } else {
-                vibrate();
-                focusIndex = (focusIndex + direction + focusGroup.length) % focusGroup.length;
-                updateFocusUI();
-            }
-        }
+// 打开对话
+function openChat(who){
+  currentChat = who;
+  const nameMap = {lucia:"Lucia（女主）",broker:"黑市中间人",ryde:"RydeMe"}
+  document.getElementById('chat-title').innerText = nameMap[who];
+  document.getElementById('msgContainer').innerHTML = "";
+  if(who === 'lucia') addMsg("Lucia","杰森，想好下一步怎么做了吗？",false);
+  if(who === 'broker') addMsg("中间人","货已经安排好了，地点发给你",false);
+  if(who === 'ryde') addMsg("RydeMe","你的行程已完成",false);
+  openPage('chat');
+  chatInput = ""; charIndex=0;
+}
+function addMsg(sender,text,isSelf){
+  const box = document.getElementById('msgContainer');
+  const d = document.createElement('div');
+  d.className = isSelf ? "msg-self" : "msg-other";
+  d.innerText = text;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
 
-        // 全局侧键入口
-        function handleKey(direction, isConfirm) {
-            if (currentView === 'home') {
-                homeAction(direction, isConfirm);
-            } else if (currentView === 'social') {
-                socialAction(direction, isConfirm);
-            } else if (currentView === 'keyboard') {
-                keyboardAction(direction, isConfirm);
-            }
-            // 其他普通App页面：按键无效，只能长按确认返回桌面
-        }
+// T9九宫格输入
+document.querySelectorAll('.t9-key').forEach(k=>{
+  k.onclick = ()=>{
+    const c = k.dataset.chars;
+    if(c === "del"){
+      chatInput = chatInput.slice(0,-1);
+      charIndex=0;
+    }else if(c === "send"){
+      if(chatInput.trim()){
+        addMsg("杰森",chatInput,true);
+        setTimeout(()=>{
+          const arr = replyPool[currentChat];
+          const r = arr[Math.floor(Math.random()*arr.length)];
+          addMsg("对方",r,false);
+        },700)
+        chatInput = ""; charIndex=0;
+      }
+    }else if(c === " "){
+      chatInput += " "; charIndex=0;
+    }else{
+      if(!k.lastChar || k.lastChar !== c){
+        charIndex=0;
+      }
+      const ch = c[charIndex % c.length];
+      if(chatInput.slice(-1).match(/[a-z0-9]/)) chatInput = chatInput.slice(0,-1);
+      chatInput += ch;
+      charIndex++;
+      k.lastChar = c;
+    }
+  }
+})
 
-        // 初始化键盘
-        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-        letters.forEach(l => {
-            const div = document.createElement('div');
-            div.className = 'k-key';
-            div.setAttribute('data-key', l);
-            div.innerText = l;
-            kGrid.appendChild(div);
-        });
-        const spaceBtn = document.createElement('div');
-        spaceBtn.className = 'k-key span-3';
-        spaceBtn.setAttribute('data-key', 'SPACE');
-        spaceBtn.innerText = '空格';
-        kGrid.appendChild(spaceBtn);
-        const delBtn = document.createElement('div');
-        delBtn.className = 'k-key span-3';
-        delBtn.setAttribute('data-key', 'DEL');
-        delBtn.innerText = '删除';
-        kGrid.appendChild(delBtn);
-        const enterBtn = document.createElement('div');
-        enterBtn.className = 'k-key span-6';
-        enterBtn.setAttribute('data-key', 'ENTER');
-        enterBtn.innerText = '发送评论 (长按确认键退出)';
-        kGrid.appendChild(enterBtn);
+// 侧边触控板简单模拟
+const tp = document.getElementById('tp');
+let drag = false;
+tp.onmousedown = ()=> drag=true;
+window.onmouseup = ()=> drag=false;
+tp.onclick = ()=>{
+  alert("触控板点击确认（可自行扩展逻辑）")
+}
+tp.onmousemove = (e)=>{
+  if(!drag) return;
+  console.log("触控滑动",e.offsetX,e.offsetY)
+}
 
-        setFocusGroup(homeIcons, 0);
-
-        // 侧键事件绑定
-        document.getElementById('btn-left').addEventListener('pointerdown', (e) => {
-            e.preventDefault(); e.target.classList.add('pressed');
-            handleKey(-1, false);
-        });
-        document.getElementById('btn-left').addEventListener('pointerup', (e) => e.target.classList.remove('pressed'));
-        document.getElementById('btn-left').addEventListener('pointerleave', (e) => e.target.classList.remove('pressed'));
-
-        document.getElementById('btn-right').addEventListener('pointerdown', (e) => {
-            e.preventDefault(); e.target.classList.add('pressed');
-            handleKey(1, false);
-        });
-        document.getElementById('btn-right').addEventListener('pointerup', (e) => e.target.classList.remove('pressed'));
-        document.getElementById('btn-right').addEventListener('pointerleave', (e) => e.target.classList.remove('pressed'));
-
-        let holdTimer = null;
-        document.getElementById('btn-confirm').addEventListener('pointerdown', (e) => {
-            e.preventDefault(); e.target.classList.add('pressed');
-            holdTimer = setTimeout(() => {
-                if(currentView !== 'home'){
-                    vibrate();
-                    goHome();
-                    setTimeout(()=>{ if(navigator.vibrate) navigator.vibrate([30,50,30]); }, 100);
-                }
-            }, 800);
-            handleKey(0, true);
-        });
-        document.getElementById('btn-confirm').addEventListener('pointerup', (e) => {
-            e.target.classList.remove('pressed');
-            clearTimeout(holdTimer);
-        });
-        document.getElementById('btn-confirm').addEventListener('pointerleave', (e) => {
-            e.target.classList.remove('pressed');
-            clearTimeout(holdTimer);
-        });
-    </script>
+// ESC 返回桌面
+document.onkeydown = (e)=>{
+  if(e.key === "Escape") backHome();
+}
+</script>
 </body>
 </html>
